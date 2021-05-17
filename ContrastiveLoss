@@ -1,0 +1,37 @@
+# from tensorflow.compat.v1.keras import backend as K
+from tensorflow.keras import backend as K
+import tensorflow as tf
+import numpy as np
+from tensorflow.keras.losses import Loss
+from sklearn.metrics import fbeta_score
+
+
+# def contrast_loss(limit=.7, t=1):
+@tf.function
+def contrast_loss(y_true, y_pred):
+    #     limit=0.8
+    #     limit2=0.6
+    # normalizujem predikciu
+    y_pred = y_pred / tf.norm(y_pred, axis=-1, keepdims=True)
+
+    #
+    y_pred = tf.reshape(y_pred, [-1, 2 * tf.shape(y_pred)[1], tf.shape(y_pred)[2]])
+    y_m = tf.math.reduce_mean(y_pred, axis=-2)
+    y_m = y_m / tf.norm(y_m, axis=-1, keepdims=True)
+    #     y_m = y_pred[:,-1,:]
+
+    # matica podobnosti
+    cos_P = tf.tensordot(y_m, y_pred, axes=[[1], [2]])
+
+    # diagonalna matica pre vyber pozitivnych podobnosti
+    diag_P = tf.repeat(tf.expand_dims(tf.eye(tf.shape(cos_P)[0]), axis=-1), repeats=tf.shape(cos_P)[-1], axis=-1)
+
+    # sucet po riadkoch ... iba redukcia dimenzie ... vynulovali sme vsetko okrem diagonaly
+    sum_P = tf.reduce_sum(tf.exp(cos_P) * diag_P, axis=-2)
+
+    # sucet po stlpcoch
+    sum_N = tf.reduce_sum(tf.exp(cos_P), axis=1)
+
+    return tf.cast(1 / tf.shape(y_pred)[0], dtype=tf.float32) * tf.reduce_sum(
+        tf.cast(-1 / tf.shape(y_pred)[1], dtype=tf.float32) * tf.reduce_sum(tf.math.log(sum_P / sum_N), axis=-1),
+        axis=-1)
