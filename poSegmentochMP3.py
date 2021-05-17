@@ -1,4 +1,3 @@
-# https://stackoverflow.com/questions/51622865/break-up-a-wav-file-by-timestamp
 import csv
 from pydub import AudioSegment
 import json
